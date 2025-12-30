@@ -1,4 +1,4 @@
-# STM32CubeIDE specific files
+# STM32CubeIDE specific files.
 /Debug/
 /Release/
 *.launch
