@@ -18,7 +18,7 @@
  */
 #include "onewire.h"
 #include "ds18b20Config.h"
-#include "tim.h"
+//#include "tim.h"
 
 void ONEWIRE_DELAY(uint16_t time_us)
 {
@@ -28,7 +28,7 @@ void ONEWIRE_DELAY(uint16_t time_us)
 void ONEWIRE_LOW(OneWire_t *gp)
 {
 	gp->GPIOx->BSRR = gp->GPIO_Pin<<16;
-}	I
+}
 void ONEWIRE_HIGH(OneWire_t *gp)
 {
 	gp->GPIOx->BSRR = gp->GPIO_Pin;
