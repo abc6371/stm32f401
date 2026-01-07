@@ -44,14 +44,14 @@
 
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim2;
-
-/* USER CODE BEGIN PV */
 tm1637_t seg = { .seg_cnt = 4,             // Number of digits
 		.gpio_clk = GPIOC,         // CLK pin port
 		.gpio_dat = GPIOC,         // DIO pin port
 		.pin_clk = FND_CLK_Pin,    // CLK pin number
 		.pin_dat = FND_DIO_Pin,    // DIO pin number
 		};
+
+/* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
 
@@ -75,7 +75,6 @@ static void MX_TIM2_Init(void);
 int main(void) {
 
 	/* USER CODE BEGIN 1 */
-	int count = 1;
 	/* USER CODE END 1 */
 
 	/* MCU Configuration--------------------------------------------------------*/
@@ -96,9 +95,8 @@ int main(void) {
 
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
-//  MX_TIM2_Init();
+	MX_TIM2_Init();
 	/* USER CODE BEGIN 2 */
-
 	HAL_TIM_Base_Start_IT(&htim2);
 	Ds18b20_Init();
 	tm1637_init(&seg);
@@ -107,31 +105,26 @@ int main(void) {
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	tm1637_brightness(&seg, 1);
-
 	while (1) {
 //		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);   // 켜기
 ////		GPIOA->BSRR = GPIO_PIN_5;
 		*(uint32_t*) 0x40020018 = 0x0020;
 		HAL_Delay(500);
 		*(uint32_t*) 0x40020018 = (uint32_t) 0x0020 << 16U;
-		HAL_Delay(100);
+//		HAL_Delay(100);
 
-		tm1637_printf(&seg, "%04d", count);
-
-		count++;
-		if (count > 9999) {
-			count = 1;
+		Ds18b20_ManualConvert();
+		if (ds18b20->DataIsValid) {
+			tm1637_temp(&seg, (*ds18b20).Temperature);
+		} else {
+			// 에러 발생 시 "----" 또는 "Err" 출력
+			tm1637_printf(&seg, "Err ");
 		}
-
 //		    HAL_Delay(100); // 0.1초마다 숫자 변경
 
 //		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET); // 끄기
 //		GPIOA->BSRR = (uint32_t)GPIO_PIN_5 << 16U;
 
-//		Ds18b20_ManualConvert();
-//		for (int i = 0; i <= 9999; i++) {
-//			digit4_temper(i,50);
-//		}
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
@@ -261,7 +254,7 @@ static void MX_GPIO_Init(void) {
 	GPIO_InitStruct.Pin = FND_CLK_Pin | FND_DIO_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
 	GPIO_InitStruct.Pull = GPIO_PULLUP;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 	/*Configure GPIO pin : TEMP_DATA_Pin */

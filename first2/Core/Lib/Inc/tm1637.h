@@ -84,6 +84,9 @@ tm1637_err_t  tm1637_printf(tm1637_t *handle, const char *format, ...);
 /* Clears the TM1637 display by setting all segments to off */
 tm1637_err_t  tm1637_clear(tm1637_t *handle);
 
+/* Display ds18b20 temperature*/
+tm1637_err_t tm1637_temp(tm1637_t *handle, float temp);
+
 /*************************************************************************************************/
 /** End of File **/
 /*************************************************************************************************/

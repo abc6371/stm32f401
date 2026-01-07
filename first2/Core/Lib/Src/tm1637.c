@@ -452,6 +452,49 @@ static tm1637_err_t tm1637_write(tm1637_t *handle, uint8_t data)
   return (tm1637_err_t)tmp;
 }
 
+
+tm1637_err_t tm1637_temp(tm1637_t *handle, float temp)
+{
+    char buf[7] = "      ";
+    int32_t val = (int32_t)(temp * 10.0f);
+    uint32_t abs_val = (val < 0) ? -val : val;
+
+    if (temp >= 100.0f) {
+        // [1] 100~ : "123 "
+        buf[0] = (abs_val / 1000) + '0';
+        buf[1] = (abs_val / 100 % 10) + '0';
+        buf[2] = (abs_val / 10 % 10) + '0';
+        buf[3] = ' ';
+        buf[4] = '\0';
+    }
+    else if (temp <= -10.0f) {
+        // [2] -99~-10 : " -:12"
+        uint32_t int_val = abs_val / 10;
+        buf[0] = '-';
+        buf[1] = '.';
+        buf[2] = (int_val / 10) + '0';
+        buf[3] = (int_val % 10) + '0';
+        buf[4] = '\0';
+    }
+    else if (temp < 0) {
+        // [3] -10 ~ 0: "-1:2 "
+        buf[0] = '-';
+        buf[1] = (abs_val / 10 % 10) + '0';
+        buf[2] = '.';
+        buf[3] = (abs_val % 10) + '0';
+        buf[4] = '\0';
+    }
+    else {
+        // [4] 0도 ~ 99.9도: "28:9"
+        buf[0] = (abs_val / 100 == 0) ? ' ' : (abs_val / 100) + '0';
+        buf[1] = (abs_val / 10 % 10) + '0';
+        buf[2] = '.';
+        buf[3] = (abs_val % 10) + '0';
+        buf[4] = '\0';
+    }
+
+    return tm1637_str(handle, buf);
+}
 /*************************************************************************************************/
 /** End of File **/
 /*************************************************************************************************/
