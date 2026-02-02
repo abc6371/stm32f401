@@ -236,6 +236,11 @@ bool MCP2515_Initialize(void);
 bool MCP2515_SetConfigMode(void);
 bool MCP2515_SetNormalMode(void);
 bool MCP2515_SetSleepMode(void);
+
+bool MCP2515_InitFull(void);
+bool SendStandardCanMessage(uint16_t can_id, uint8_t len, uint8_t *data);
+bool TryReadCanMessage(uint32_t *id, uint8_t *dlc, uint8_t *data, bool *is_extended);
+
 void MCP2515_Reset(void);
 uint8_t MCP2515_ReadByte (uint8_t address);
 void MCP2515_ReadRxSequence(uint8_t instruction, uint8_t *data, uint8_t length);

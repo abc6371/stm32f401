@@ -274,3 +274,101 @@ static void SPI_RxBuffer(uint8_t *buffer, uint8_t length)
 {
   HAL_SPI_Receive(SPI_CAN, buffer, length, SPI_TIMEOUT);
 }
+
+
+bool MCP2515_InitFull(void)
+{
+  // 1. 하드웨어 리셋
+  MCP2515_Reset();
+  HAL_Delay(20);
+
+  // 2. SPI 통신 확인
+  if (!MCP2515_Initialize()) {
+    return false;
+  }
+
+  // 3. 설정 모드 진입
+  if (!MCP2515_SetConfigMode()) {
+    return false;
+  }
+
+  // 4. CAN 비트 타이밍 (500kbps @8MHz 크리스탈 예시)
+  MCP2515_WriteByte(MCP2515_CNF1, 0x01);  // SJW=1, BRP=1
+  MCP2515_WriteByte(MCP2515_CNF2, 0x90);  // PRSEG=1, PHSEG1=2
+  MCP2515_WriteByte(MCP2515_CNF3, 0x02);  // PHSEG2=3
+
+  // 5. RX 버퍼 설정 (모든 메시지 수용)
+  MCP2515_WriteByte(MCP2515_RXB0CTRL, 0x64);  // RXM=00, BUKT=1
+  MCP2515_WriteByte(MCP2515_RXB1CTRL, 0x60);
+
+  // 6. 인터럽트 설정 (필요 시, RX 인터럽트)
+  MCP2515_WriteByte(MCP2515_CANINTE, 0x03);  // RX0IE + RX1IE
+
+  // 7. Normal 모드 진입
+  if (!MCP2515_SetNormalMode()) {
+    return false;
+  }
+
+  return true;
+}
+
+////////////////
+// 표준 CAN 메시지 송신 함수
+bool SendStandardCanMessage(uint16_t can_id, uint8_t len, uint8_t *data)
+{
+  uint8_t id_reg[4];
+  id_reg[0] = (can_id >> 3) & 0xFF;  // SIDH
+  id_reg[1] = (can_id << 5) & 0xE0;  // SIDL (EXIDE=0)
+  id_reg[2] = 0x00;  // EID8
+  id_reg[3] = 0x00;  // EID0
+
+  uint8_t dlc = len & 0x0F;
+  if (dlc > 8) dlc = 8;
+
+  // TXB0에 로드
+  MCP2515_LoadTxSequence(MCP2515_LOAD_TXB0SIDH, id_reg, dlc, data);  // MCP_LOAD_TXB0_ID는 MCP2515.h에 정의 (0x40)
+
+  // 전송 요청
+  MCP2515_RequestToSend(MCP2515_RTS_TX0);
+
+  // 완료 대기 (폴링)
+  uint8_t timeout = 100;
+  while (timeout--) {
+    if (!(MCP2515_ReadStatus() & 0x04)) {  // TX0REQ 비트 확인
+      return true;
+    }
+    HAL_Delay(1);
+  }
+  return false;
+}
+
+// CAN 메시지 수신 함수 (폴링 방식)
+bool TryReadCanMessage(uint32_t *id, uint8_t *dlc, uint8_t *data, bool *is_extended)
+{
+  uint8_t status = MCP2515_ReadStatus();
+
+  if (!(status & 0x03)) return false;  // RX 버퍼 없음
+
+  uint8_t rx_buf = (status & 0x01) ? 0 : 1;  // RXB0 우선
+  uint8_t instr = (rx_buf == 0) ? MCP2515_READ_RXB0SIDH : MCP2515_READ_RXB1SIDH;
+
+  uint8_t raw[13];
+  MCP2515_ReadRxSequence(instr, raw, 13);
+
+  // ID 추출
+  *is_extended = (raw[1] & 0x08) != 0;
+  if (*is_extended) {
+    *id = ((uint32_t)raw[0] << 21) | ((uint32_t)(raw[1] & 0xE0) << 13) | ((uint32_t)(raw[1] & 0x03) << 16) | ((uint32_t)raw[2] << 8) | raw[3];
+  } else {
+    *id = ((uint32_t)raw[0] << 3) | (raw[1] >> 5);
+  }
+
+  *dlc = raw[4] & 0x0F;
+  if (*dlc > 8) *dlc = 8;
+  memcpy(data, &raw[5], *dlc);
+
+  // 플래그 클리어
+  MCP2515_BitModify(MCP2515_CANINTF, (rx_buf == 0) ? 0x01 : 0x02, 0x00);
+
+  return true;
+}
