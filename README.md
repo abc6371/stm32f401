@@ -1,7 +1,5 @@
 # STM32F401 CAN / 온도 / FND 프로젝트
 
-[English](README.en.md) | 한국어
-
 STM32CubeIDE로 작성된 STM32F401RE(T6) 펌웨어 프로젝트입니다. SPI로 연결된
 MCP2515 CAN 컨트롤러를 구동하고, DS18B20 OneWire 온도 센서 값을 읽어와
 TM1637 4자리 7-세그먼트 모듈에 표시합니다.
